@@ -1,0 +1,44 @@
+---
+- name: Format and partition D drive on Windows
+  hosts: windows
+  gather_facts: no
+  tasks:
+    - name: Gather disk facts
+      win_disk_facts:
+
+    - name: Get the disk containing D: drive
+      set_fact:
+        target_disk: "{{ item['number'] }}"
+      loop: "{{ ansible_disks }}"
+      when: "'D:' in item.partitions | map(attribute='mount_point') | list"
+
+    - name: Remove existing partitions (if any)
+      win_partition:
+        disk_number: "{{ target_disk }}"
+        partition_number: 1
+        state: absent
+      when: target_disk is defined
+
+    - name: Create new partition on D drive
+      win_partition:
+        disk_number: "{{ target_disk }}"
+        partition_number: 1
+        partition_size: 50%  # Modify size as needed
+        drive_letter: D
+        filesystem: NTFS
+      when: target_disk is defined
+
+    - name: Format D drive
+      win_partition:
+        disk_number: "{{ target_disk }}"
+        partition_number: 1
+        drive_letter: D
+        filesystem: NTFS
+        state: present
+      when: target_disk is defined
+
+    - name: Ensure D drive is present
+      win_partition:
+        disk_number: "{{ target_disk }}"
+        drive_letter: D
+        state: present
